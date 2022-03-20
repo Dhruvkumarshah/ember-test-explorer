@@ -41,6 +41,9 @@
 		"@vscode/test-electron": "^1.6.2"
 	},
 	"dependencies": {
+		"colors": "^1.4.0",
+		"puppeteer": "^13.1.2",
+		"puppeteer-core": "^13.1.2",
 		"typescript-estree": "^18.1.0"
 	}
 }
