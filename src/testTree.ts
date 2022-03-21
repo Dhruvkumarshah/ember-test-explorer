@@ -13,7 +13,7 @@ let generationCounter = 0;
 
 const host = vscode.workspace.getConfiguration('emberServer').get('host');
 const port = vscode.workspace.getConfiguration('emberServer').get('port');
-console.log(host, port);
+
 export const getContentFromFilesystem = async (uri: vscode.Uri) => {
   try {
     const rawContent = await vscode.workspace.fs.readFile(uri);
@@ -105,7 +105,7 @@ export class TestCase {
     const result = await runQunitPuppeteer(
       {
         // Path to qunit tests suite
-        targetUrl: `http://${host}:${port}/tests/index.html?moduleId=${moduleId}&filter=${encodeURIComponent(
+        targetUrl: `${host}:${port}/tests/index.html?moduleId=${moduleId}&filter=${encodeURIComponent(
           item.label
         )}&devmode`,
         // (optional, 30000 by default) global timeout for the tests suite

@@ -3,7 +3,7 @@
   "displayName": "ember-test-explorer",
   "repository": "https://github.com/Dhruvkumarshah/ember-test-explorer.git",
   "description": "Display & Debug Ember test cases",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.61.0"
@@ -21,7 +21,7 @@
       "properties": {
         "emberServer.host": {
           "type": "string",
-          "default": "localhost",
+          "default": "http://localhost",
           "description": "Ember server host"
         },
         "emberServer.port": {

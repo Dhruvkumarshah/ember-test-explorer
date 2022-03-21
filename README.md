@@ -13,7 +13,7 @@ Ember serve should be started before initializing plugin.(buggy as of now)
 Setup emberServer contributes property, default: (Updated in workspace settings.json file under .vscode folder)
 
 {
-"emberServer.host": "localhost,
+"emberServer.host": "localhost",
 "emberServer.port": 4200,
 "emberServer.puppeteerExecutablePath": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
 }
@@ -31,10 +31,9 @@ To attach process to debugger, run in debug mode first weight for chrome to laun
       "webRoot": "${workspaceFolder}",
       "port": 9222,
       "sourceMapPathOverrides": {
-        // "super-rental/*": "${workspaceRoot}/app/*",
+        "super-rental/*": "${workspaceRoot}/app/*",
         "super-rental/tests/*": "${workspaceRoot}/tests/*"
       }
-      // ""
     }
   ]
 }

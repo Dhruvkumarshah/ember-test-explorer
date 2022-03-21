@@ -155,7 +155,7 @@ async function getQunit() {
   try {
     const page = await browser.newPage();
     await page.goto(
-      `http://${vscode.workspace.getConfiguration('emberServer').get('host')}:${vscode.workspace
+      `${vscode.workspace.getConfiguration('emberServer').get('host')}:${vscode.workspace
         .getConfiguration('emberServer')
         .get('port')}/tests/index.html`
     );
