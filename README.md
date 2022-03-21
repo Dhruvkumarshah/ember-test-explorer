@@ -1,31 +1,47 @@
 # ember-test-explorer README
 
-This is the README for your extension "ember-test-explorer". After writing up a brief description, we recommend including the following sections.
+This is the ember-test-explorer vscode extension to help display & debug ember tests inside vscode.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+This plugin help us to visualize the ember test cases.
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+Works for Ember project. Ember CLI is configured!
+Ember serve should be started before initializing plugin.(buggy as of now)
+Setup emberServer contributes property, default: (Updated in workspace settings.json file under .vscode folder)
+
+{
+"emberServer.host": "localhost,
+"emberServer.port": 4200,
+"emberServer.puppeteerExecutablePath": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+}
+
+To attach process to debugger, run in debug mode first weight for chrome to launch using 9222 port & then attach it to vscode using following setup in launch.json:
+
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch local",
+      "type": "chrome",
+      "request": "attach",
+      "url": "http://localhost:4200*",
+      "webRoot": "${workspaceFolder}",
+      "port": 9222,
+      "sourceMapPathOverrides": {
+        // "super-rental/*": "${workspaceRoot}/app/*",
+        "super-rental/tests/*": "${workspaceRoot}/tests/*"
+      }
+      // ""
+    }
+  ]
+}
 
 ## Extension Settings
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: enable/disable this extension
-* `myExtension.thing`: set to `blah` to do something
+Extension is enabled when ember test cases detected.
 
 ## Known Issues
 
@@ -37,34 +53,4 @@ Users appreciate release notes as you update your extension.
 
 ### 1.0.0
 
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
------------------------------------------------------------------------------------------------------------
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-**Note:** You can author your README using Visual Studio Code.  Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux)
-* Toggle preview (`Shift+CMD+V` on macOS or `Shift+Ctrl+V` on Windows and Linux)
-* Press `Ctrl+Space` (Windows, Linux) or `Cmd+Space` (macOS) to see a list of Markdown snippets
-
-### For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+Initial release!

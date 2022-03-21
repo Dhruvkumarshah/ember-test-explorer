@@ -1,6 +1,5 @@
-const puppeteer = require('puppeteer');
-// eslint-disable-next-line
-const colors = require('colors');
+import * as vscode from 'vscode';
+const puppeteer = require('puppeteer-core');
 
 const DEFAULT_TIMEOUT = 30000;
 const CALLBACKS_PREFIX = 'qunit_puppeteer_runner';
@@ -11,6 +10,9 @@ const TEST_DONE_CB = `${CALLBACKS_PREFIX}_testDone`;
 const LOG_CB = `${CALLBACKS_PREFIX}_log`;
 const BEGIN_CB = `${CALLBACKS_PREFIX}_begin`;
 const DONE_CB = `${CALLBACKS_PREFIX}_done`;
+
+let qUnitBrowserInstance: any;
+let _shouldDebug: boolean;
 
 /**
  * Helper function that allows resolve promise externally
@@ -214,6 +216,7 @@ export async function runQunitWithPage(page: any, qunitPuppeteerArgs: any) {
           const qunitName = callbacks[i];
           const callbackName = evaluateArgs.callbacks[qunitName];
           QUnit[qunitName]((context: any) => {
+            //@ts-ignore
             window[callbackName](safeCloneQUnitContext(context));
           });
         }
@@ -242,6 +245,7 @@ export async function runQunitWithPage(page: any, qunitPuppeteerArgs: any) {
 
   // All good, clear the timeout
   clearTimeout(timeoutId);
+
   return qunitTestResult;
 }
 
@@ -263,16 +267,41 @@ async function runQunitWithBrowser(browser: any, qunitPuppeteerArgs: any) {
  * Opens the specified HTML page in a Chromium puppeteer and captures results of a test run.
  * @param {QunitPuppeteerArgs} qunitPuppeteerArgs Configuration for the test runner
  */
-export async function runQunitPuppeteer(qunitPuppeteerArgs: any) {
-  const puppeteerArgs = qunitPuppeteerArgs.puppeteerArgs || ['--allow-file-access-from-files'];
-  const args = { args: puppeteerArgs };
-  const browser = await puppeteer.launch(args);
-
-  try {
-    return await runQunitWithBrowser(browser, qunitPuppeteerArgs);
-  } finally {
-    if (browser) {
-      browser.close();
+export async function runQunitPuppeteer(qunitPuppeteerArgs: any, shouldDebug: boolean) {
+  if (!qUnitBrowserInstance || _shouldDebug !== shouldDebug) {
+    if (qUnitBrowserInstance) {
+      qUnitBrowserInstance.close();
+    }
+    qUnitBrowserInstance = await setupPuppeteer(shouldDebug);
+  }
+  if (_shouldDebug) {
+    const pages = await qUnitBrowserInstance.pages();
+    if (pages?.length > 3) {
+      for (let i = 0; i < pages.length - 2; i++) {
+        pages[i]?.close();
+      }
     }
   }
+  _shouldDebug = shouldDebug;
+  try {
+    return await runQunitWithBrowser(qUnitBrowserInstance, qunitPuppeteerArgs);
+  } finally {
+  }
+}
+
+export async function setupPuppeteer(shouldDebug: boolean) {
+  return puppeteer.launch({
+    args: [
+      '--allow-file-access-from-files',
+      '--remote-debugging-port=9222',
+      '--remote-debugging-address=0.0.0.0',
+      `--window-size=600,600}`,
+    ],
+    headless: !shouldDebug,
+    executablePath: vscode.workspace.getConfiguration('emberServer').get('puppeteerExecutablePath'),
+    // defaultViewport: {
+    //   width: 400,
+    //   height: 400,
+    // },
+  });
 }

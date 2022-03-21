@@ -1,49 +1,73 @@
 {
-	"name": "ember-test-explorer",
-	"displayName": "ember-test-explorer",
-	"description": "",
-	"version": "0.0.1",
-	"enableProposedApi": true,
-	"engines": {
-		"vscode": "^1.61.0"
-	},
-	"categories": [
-		"Other"
-	],
-	"activationEvents": [
-		"workspaceContains:tests/**/*.js"
-	],
-	"main": "./out/extension.js",
-	"prettier": {
-		"printWidth": 120,
-		"singleQuote": true,
-		"arrowParens": "avoid"
-	},
-	"scripts": {
-		"vscode:prepublish": "npm run compile",
-		"compile": "tsc -p ./",
-		"watch": "tsc -watch -p ./",
-		"pretest": "npm run compile && npm run lint",
-		"lint": "eslint src --ext ts",
-		"test": "node ./out/test/runTest.js"
-	},
-	"devDependencies": {
-		"@types/vscode": "^1.61.0",
-		"@types/glob": "^7.1.4",
-		"@types/mocha": "^9.0.0",
-		"@types/node": "14.x",
-		"@typescript-eslint/eslint-plugin": "^4.31.1",
-		"@typescript-eslint/parser": "^4.31.1",
-		"eslint": "^7.32.0",
-		"glob": "^7.1.7",
-		"mocha": "^9.1.1",
-		"typescript": "^4.4.3",
-		"@vscode/test-electron": "^1.6.2"
-	},
-	"dependencies": {
-		"colors": "^1.4.0",
-		"puppeteer": "^13.1.2",
-		"puppeteer-core": "^13.1.2",
-		"typescript-estree": "^18.1.0"
-	}
+  "name": "ember-test-explorer",
+  "displayName": "ember-test-explorer",
+  "repository": "https://github.com/Dhruvkumarshah/ember-test-explorer.git",
+  "description": "Display & Debug Ember test cases",
+  "version": "0.0.1",
+  "icon": "images/icon.png",
+  "engines": {
+    "vscode": "^1.61.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "workspaceContains:tests/**/*.js"
+  ],
+  "contributes": {
+    "configuration": {
+      "type": "object",
+      "title": "Ember test explorer configuration",
+      "properties": {
+        "emberServer.host": {
+          "type": "string",
+          "default": "localhost",
+          "description": "Ember server host"
+        },
+        "emberServer.port": {
+          "type": "number",
+          "default": 4200,
+          "description": "Ember server port"
+        },
+        "emberServer.puppeteerExecutablePath": {
+          "type": "string",
+          "default": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+          "description": "Ember server port"
+        }
+      }
+    }
+  },
+  "main": "./out/extension.js",
+  "prettier": {
+    "printWidth": 120,
+    "singleQuote": true,
+    "arrowParens": "avoid"
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/mocha": "^9.0.0",
+    "eslint": "^7.32.0",
+    "glob": "^7.1.7",
+    "mocha": "^9.1.1",
+    "@vscode/test-electron": "^1.6.2",
+    "@typescript-eslint/eslint-plugin": "^4.31.1",
+    "@types/node": "14.x",
+    "@types/vscode": "^1.61.0",
+    "@typescript-eslint/parser": "^4.31.1",
+    "@types/glob": "^7.1.4",
+    "puppeteer": "^13.1.2"
+  },
+  "dependencies": {
+    "typescript-estree": "^18.1.0",
+    "typescript": "^4.4.3",
+    "puppeteer-core": "^13.1.2"
+  },
+  "publisher": "dhruv"
 }

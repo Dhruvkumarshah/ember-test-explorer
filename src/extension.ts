@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { getOrCreateFile, TestHandler } from './test-handler';
 
 export function activate(context: vscode.ExtensionContext) {
+
   const unitCtrl = new TestHandler(context, 'tests/unit/**/*.js', 'Unit').setupRunProfile();
   const integrationCtrl = new TestHandler(context, 'tests/integration/**/*.js', 'Integration').setupRunProfile();
   const acceptanceCtrl = new TestHandler(context, 'tests/acceptance/**/*.js', 'Acceptance').setupRunProfile();

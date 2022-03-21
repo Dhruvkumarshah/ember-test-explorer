@@ -1,17 +1,6 @@
 import * as vscode from 'vscode';
 import { TestCase, TEST_DATA, TestFile } from './testTree';
-const puppeteer = require('puppeteer');
-
-const qunitArgs = {
-  // Path to qunit tests suite
-  targetUrl: `http://localhost:4200/tests/index.html?filter=${encodeURI('should correctly concat foo')}`,
-  // (optional, 30000 by default) global timeout for the tests suite
-  timeout: 1000000000,
-  // (optional, false by default) should the browser console be redirected or not
-  redirectConsole: true,
-  // (optional, ['--allow-file-access-from-files'] by default) Chrome command-line arguments
-  puppeteerArgs: ['--allow-file-access-from-files'],
-};
+const puppeteer = require('puppeteer-core');
 
 const gatherTestItems = (collection: vscode.TestItemCollection) => {
   const items: vscode.TestItem[] = [];
@@ -75,7 +64,11 @@ export class TestHandler {
     context.subscriptions.push(this.ctrl);
   }
 
-  runHandlerForTests = (request: vscode.TestRunRequest, cancellation: vscode.CancellationToken) => {
+  runHandlerForTests = (
+    shouldDebug: boolean,
+    request: vscode.TestRunRequest,
+    cancellation: vscode.CancellationToken
+  ) => {
     const queue: { test: vscode.TestItem; data: TestCase }[] = [];
     const run = this.ctrl.createTestRun(request);
 
@@ -108,7 +101,7 @@ export class TestHandler {
           run.skipped(test);
         } else {
           run.started(test);
-          await data.run(test, run, moduleId);
+          await data.run(test, run, moduleId, shouldDebug);
         }
 
         run.appendOutput(`Completed ${test.id}\r\n`);
@@ -121,7 +114,23 @@ export class TestHandler {
   };
 
   setupRunProfile() {
-    this.ctrl.createRunProfile('Run Tests', vscode.TestRunProfileKind.Run, this.runHandlerForTests, true);
+    this.ctrl.createRunProfile(
+      'Run Tests',
+      vscode.TestRunProfileKind.Run,
+      (request, token) => {
+        this.runHandlerForTests(false, request, token);
+      },
+      true
+    );
+
+    this.ctrl.createRunProfile(
+      'Debug',
+      vscode.TestRunProfileKind.Debug,
+      (request, token) => {
+        this.runHandlerForTests(true, request, token);
+      },
+      false
+    );
     this.ctrl.resolveHandler = async item => {
       if (!item) {
         this.context.subscriptions.push(...startWatchingWorkspace(this.pathToTestFiles, this.ctrl));
@@ -138,14 +147,22 @@ export class TestHandler {
 }
 
 async function getQunit() {
-  const browser = await puppeteer.launch({ args: ['--allow-file-access-from-files'] });
+  const browser = await puppeteer.launch({
+    args: ['--allow-file-access-from-files'],
+    executablePath: vscode.workspace.getConfiguration('emberServer').get('puppeteerExecutablePath'),
+  });
   let qUnit;
   try {
     const page = await browser.newPage();
-    await page.goto('http://localhost:4200/tests/index.html');
+    await page.goto(
+      `http://${vscode.workspace.getConfiguration('emberServer').get('host')}:${vscode.workspace
+        .getConfiguration('emberServer')
+        .get('port')}/tests/index.html`
+    );
 
     qUnit = await page.evaluate(() => {
       return {
+        //@ts-ignore
         modules: window['QUnit'].config.modules,
       };
     });

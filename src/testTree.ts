@@ -11,6 +11,9 @@ export const TEST_DATA = new WeakMap<vscode.TestItem, MarkdownTestData>();
 
 let generationCounter = 0;
 
+const host = vscode.workspace.getConfiguration('emberServer').get('host');
+const port = vscode.workspace.getConfiguration('emberServer').get('port');
+console.log(host, port);
 export const getContentFromFilesystem = async (uri: vscode.Uri) => {
   try {
     const rawContent = await vscode.workspace.fs.readFile(uri);
@@ -30,6 +33,7 @@ export class TestFile {
       item.error = undefined;
       this.updateFromContents(controller, content, item);
     } catch (err) {
+      //@ts-ignore
       item.error = err['stack'];
     }
   }
@@ -97,17 +101,26 @@ export class TestCase {
     return `${this.module}`;
   }
 
-  async run(item: vscode.TestItem, options: vscode.TestRun, moduleId: string): Promise<void> {
-    const result = await runQunitPuppeteer({
-      // Path to qunit tests suite
-      targetUrl: `http://localhost:4200/tests/index.html?moduleId=${moduleId}&filter=${encodeURIComponent(item.label)}`,
-      // (optional, 30000 by default) global timeout for the tests suite
-      timeout: 1000000000,
-      // (optional, false by default) should the browser console be redirected or not
-      redirectConsole: true,
-      // (optional, ['--allow-file-access-from-files'] by default) Chrome command-line arguments
-      puppeteerArgs: ['--allow-file-access-from-files'],
-    });
+  async run(item: vscode.TestItem, options: vscode.TestRun, moduleId: string, shouldDebug: boolean): Promise<void> {
+    const result = await runQunitPuppeteer(
+      {
+        // Path to qunit tests suite
+        targetUrl: `http://${host}:${port}/tests/index.html?moduleId=${moduleId}&filter=${encodeURIComponent(
+          item.label
+        )}&devmode`,
+        // (optional, 30000 by default) global timeout for the tests suite
+        timeout: 1000000000,
+        // (optional, false by default) should the browser console be redirected or not
+        redirectConsole: true,
+        // (optional, ['--allow-file-access-from-files'] by default) Chrome command-line arguments
+        puppeteerArgs: [
+          '--allow-file-access-from-files',
+          '--remote-debugging-port=9222',
+          '--remote-debugging-address=0.0.0.0',
+        ],
+      },
+      shouldDebug
+    );
 
     if (result.stats.failed === 0) {
       options.passed(item);
@@ -129,6 +142,7 @@ export class TestCase {
             } else {
               messages.push({
                 ...new vscode.TestMessage(`Message: ${log.message}\nSource: ${log.source}`),
+                //@ts-ignore
                 location: new vscode.Location(item.uri, item.range),
               });
             }
