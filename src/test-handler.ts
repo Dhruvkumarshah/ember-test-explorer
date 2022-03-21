@@ -148,7 +148,8 @@ export class TestHandler {
 
 async function getQunit() {
   const browser = await puppeteer.launch({
-    args: ['--allow-file-access-from-files'],
+    ignoreHTTPSErrors: true,
+    args: ['--allow-file-access-from-files', '--ignore-certificate-errors', '--allow-sandbox-debugging'],
     executablePath: vscode.workspace.getConfiguration('emberServer').get('puppeteerExecutablePath'),
   });
   let qUnit;
@@ -163,7 +164,12 @@ async function getQunit() {
     qUnit = await page.evaluate(() => {
       return {
         //@ts-ignore
-        modules: window['QUnit'].config.modules,
+        modules: window['QUnit'].config.modules.map(module => {
+          return {
+            name: module.name,
+            moduleId: module.moduleId,
+          };
+        }),
       };
     });
   } finally {

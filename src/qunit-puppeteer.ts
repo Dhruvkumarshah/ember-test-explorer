@@ -291,11 +291,15 @@ export async function runQunitPuppeteer(qunitPuppeteerArgs: any, shouldDebug: bo
 
 export async function setupPuppeteer(shouldDebug: boolean) {
   return puppeteer.launch({
+    ignoreHTTPSErrors: true,
     args: [
       '--allow-file-access-from-files',
       '--remote-debugging-port=9222',
       '--remote-debugging-address=0.0.0.0',
-      `--window-size=600,600}`,
+      '--window-size={600,600}',
+      '--ignore-certificate-errors',
+      '--allow-sandbox-debugging',
+      '--no-sandbox'
     ],
     headless: !shouldDebug,
     executablePath: vscode.workspace.getConfiguration('emberServer').get('puppeteerExecutablePath'),
