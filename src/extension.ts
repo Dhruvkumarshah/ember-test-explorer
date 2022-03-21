@@ -1,7 +1,9 @@
 import * as vscode from 'vscode';
+import { OUTPUT_CHANNEL } from './error-output';
 import { getOrCreateFile, TestHandler } from './test-handler';
 
 export function activate(context: vscode.ExtensionContext) {
+  OUTPUT_CHANNEL.appendLine('Activated the extension.');
 
   const unitCtrl = new TestHandler(context, 'tests/unit/**/*.js', 'Unit').setupRunProfile();
   const integrationCtrl = new TestHandler(context, 'tests/integration/**/*.js', 'Integration').setupRunProfile();

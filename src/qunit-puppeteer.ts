@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { OUTPUT_CHANNEL } from './error-output';
 const puppeteer = require('puppeteer-core');
 
 const DEFAULT_TIMEOUT = 30000;
@@ -285,7 +286,8 @@ export async function runQunitPuppeteer(qunitPuppeteerArgs: any, shouldDebug: bo
   _shouldDebug = shouldDebug;
   try {
     return await runQunitWithBrowser(qUnitBrowserInstance, qunitPuppeteerArgs);
-  } finally {
+  } catch (err) {
+    OUTPUT_CHANNEL.appendLine('Error While running the tests with Browser!: ' + err);
   }
 }
 
@@ -296,16 +298,10 @@ export async function setupPuppeteer(shouldDebug: boolean) {
       '--allow-file-access-from-files',
       '--remote-debugging-port=9222',
       '--remote-debugging-address=0.0.0.0',
-      '--window-size={600,600}',
       '--ignore-certificate-errors',
       '--allow-sandbox-debugging',
-      '--no-sandbox'
     ],
     headless: !shouldDebug,
     executablePath: vscode.workspace.getConfiguration('emberServer').get('puppeteerExecutablePath'),
-    // defaultViewport: {
-    //   width: 400,
-    //   height: 400,
-    // },
   });
 }

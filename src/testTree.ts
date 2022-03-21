@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { TextDecoder } from 'util';
 import { parseMarkdown } from './parser';
 import { runQunitPuppeteer } from './qunit-puppeteer';
+import { OUTPUT_CHANNEL } from './error-output';
 
 const textDecoder = new TextDecoder('utf-8');
 
@@ -102,55 +103,61 @@ export class TestCase {
   }
 
   async run(item: vscode.TestItem, options: vscode.TestRun, moduleId: string, shouldDebug: boolean): Promise<void> {
-    const result = await runQunitPuppeteer(
-      {
-        // Path to qunit tests suite
-        targetUrl: `${host}:${port}/tests/index.html?moduleId=${moduleId}&filter=${encodeURIComponent(
-          item.label
-        )}&devmode`,
-        // (optional, 30000 by default) global timeout for the tests suite
-        timeout: 1000000000,
-        // (optional, false by default) should the browser console be redirected or not
-        redirectConsole: true,
-        // (optional, ['--allow-file-access-from-files'] by default) Chrome command-line arguments
-        puppeteerArgs: [
-          '--allow-file-access-from-files',
-          '--remote-debugging-port=9222',
-          '--remote-debugging-address=0.0.0.0',
-        ],
-      },
-      shouldDebug
-    );
-
-    if (result.stats.failed === 0) {
-      options.passed(item);
-    } else {
-      const logs = result.modules[this.getModule()]?.tests.find(
-        (res: { name: string }) => res.name === this.getLabel()
-      )?.log;
-      const messages: vscode.TestMessage[] = [];
-
-      logs.forEach(
-        (log: { result: any; expected: string; actual: string; message: string; source: string }, index: number) => {
-          if (!log.result && item.uri) {
-            if (log.actual) {
-              messages.push({
-                ...vscode.TestMessage.diff(`Expected ${log.expected}`, log.expected, log.actual),
-                location: new vscode.Location(item.uri, this.assertionsRange[index]),
-                message: new vscode.MarkdownString(log.message),
-              });
-            } else {
-              messages.push({
-                ...new vscode.TestMessage(`Message: ${log.message}\nSource: ${log.source}`),
-                //@ts-ignore
-                location: new vscode.Location(item.uri, item.range),
-              });
-            }
-          }
-        }
+    try {
+      const result = await runQunitPuppeteer(
+        {
+          // Path to qunit tests suite
+          targetUrl: `${host}:${port}/tests/index.html?moduleId=${moduleId}&filter=${encodeURIComponent(
+            item.label
+          )}&devmode`,
+          // (optional, 30000 by default) global timeout for the tests suite
+          timeout: 1000000000,
+          // (optional, false by default) should the browser console be redirected or not
+          redirectConsole: true,
+          // (optional, ['--allow-file-access-from-files'] by default) Chrome command-line arguments
+          puppeteerArgs: [
+            '--allow-file-access-from-files',
+            '--remote-debugging-port=9222',
+            '--remote-debugging-address=0.0.0.0',
+            '--ignore-certificate-errors', 
+            '--allow-sandbox-debugging'
+          ],
+        },
+        shouldDebug
       );
 
-      options.failed(item, messages);
+      if (result.stats.failed === 0) {
+        options.passed(item);
+      } else {
+        const logs = result.modules[this.getModule()]?.tests.find(
+          (res: { name: string }) => res.name === this.getLabel()
+        )?.log;
+        const messages: vscode.TestMessage[] = [];
+
+        logs.forEach(
+          (log: { result: any; expected: string; actual: string; message: string; source: string }, index: number) => {
+            if (!log.result && item.uri) {
+              if (log.actual) {
+                messages.push({
+                  ...vscode.TestMessage.diff(`Expected ${log.expected}`, log.expected, log.actual),
+                  location: new vscode.Location(item.uri, this.assertionsRange[index]),
+                  message: new vscode.MarkdownString(log.message),
+                });
+              } else {
+                messages.push({
+                  ...new vscode.TestMessage(`Message: ${log.message}\nSource: ${log.source}`),
+                  //@ts-ignore
+                  location: new vscode.Location(item.uri, item.range),
+                });
+              }
+            }
+          }
+        );
+
+        options.failed(item, messages);
+      }
+    } catch (err) {
+      OUTPUT_CHANNEL.appendLine('Error While running the tests!: ' + err);
     }
   }
 }

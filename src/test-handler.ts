@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { OUTPUT_CHANNEL } from './error-output';
 import { TestCase, TEST_DATA, TestFile } from './testTree';
 const puppeteer = require('puppeteer-core');
 
@@ -147,6 +148,7 @@ export class TestHandler {
 }
 
 async function getQunit() {
+  OUTPUT_CHANNEL.appendLine('Start Loading the moduleID for QUnit modules.');
   const browser = await puppeteer.launch({
     ignoreHTTPSErrors: true,
     args: ['--allow-file-access-from-files', '--ignore-certificate-errors', '--allow-sandbox-debugging'],
@@ -172,8 +174,15 @@ async function getQunit() {
         }),
       };
     });
+  } catch (err) {
+    OUTPUT_CHANNEL.appendLine('Error While launching browser to fetch moduleId: ' + err);
   } finally {
     await browser.close();
+  }
+  if (qUnit?.modules?.length > 0) {
+    OUTPUT_CHANNEL.appendLine('Successfully Loaded the moduleID for QUnit modules.');
+  } else {
+    OUTPUT_CHANNEL.appendLine('Unable to fetch module ID for QUnit modules. Please reload the vscode');
   }
   return qUnit;
 }
