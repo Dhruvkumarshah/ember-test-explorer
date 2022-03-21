@@ -3,7 +3,7 @@
   "displayName": "ember-test-explorer",
   "repository": "https://github.com/Dhruvkumarshah/ember-test-explorer.git",
   "description": "Display & Debug Ember test cases",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.61.0"

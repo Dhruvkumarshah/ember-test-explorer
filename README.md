@@ -6,20 +6,18 @@ This is the ember-test-explorer vscode extension to help display & debug ember t
 
 This plugin help us to visualize the ember test cases.
 
+![Feature Walk Through](./feature-walkthrough.gif)
+
 ## Requirements
 
 Works for Ember project. Ember CLI is configured!
 Ember serve should be started before initializing plugin.(buggy as of now)
 Setup emberServer contributes property, default: (Updated in workspace settings.json file under .vscode folder)
-
-{
-"emberServer.host": "localhost",
-"emberServer.port": 4200,
-"emberServer.puppeteerExecutablePath": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-}
+Please check out Feature Contributions settings for this plugin to get list of settings.
 
 To attach process to debugger, run in debug mode first weight for chrome to launch using 9222 port & then attach it to vscode using following setup in launch.json:
 
+```json
 {
   "version": "0.2.0",
   "configurations": [
@@ -27,16 +25,17 @@ To attach process to debugger, run in debug mode first weight for chrome to laun
       "name": "Launch local",
       "type": "chrome",
       "request": "attach",
-      "url": "http://localhost:4200*",
+      "url": "http://localhost:4200*", // Update with your host & port name
       "webRoot": "${workspaceFolder}",
       "port": 9222,
       "sourceMapPathOverrides": {
-        "super-rental/*": "${workspaceRoot}/app/*",
-        "super-rental/tests/*": "${workspaceRoot}/tests/*"
+        "super-rental/*": "${workspaceRoot}/app/*", // Update module-prefix based on env.ts file
+        "super-rental/tests/*": "${workspaceRoot}/tests/*" // Update module-prefix based on env.ts file
       }
     }
   ]
 }
+```
 
 ## Extension Settings
 

@@ -59,7 +59,7 @@ export class TestHandler {
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly pathToTestFiles: string,
-    controllerName: string
+    private readonly controllerName: string
   ) {
     this.ctrl = vscode.tests.createTestController(`ember${controllerName}TestController`, controllerName);
     context.subscriptions.push(this.ctrl);
@@ -140,6 +140,7 @@ export class TestHandler {
 
       const data = TEST_DATA.get(item);
       if (data instanceof TestFile) {
+        OUTPUT_CHANNEL.appendLine(`Discovered ${this.controllerName} test cases.`);
         await data.updateFromDisk(this.ctrl, item);
       }
     };

@@ -5,8 +5,13 @@ import { getOrCreateFile, TestHandler } from './test-handler';
 export function activate(context: vscode.ExtensionContext) {
   OUTPUT_CHANNEL.appendLine('Activated the extension.');
 
+  OUTPUT_CHANNEL.appendLine('Start discovering Unit test cases under: tests/unit/**/*.js');
   const unitCtrl = new TestHandler(context, 'tests/unit/**/*.js', 'Unit').setupRunProfile();
+  
+  OUTPUT_CHANNEL.appendLine('Start discovering Integration test cases under: tests/integration/**/*.js');
   const integrationCtrl = new TestHandler(context, 'tests/integration/**/*.js', 'Integration').setupRunProfile();
+  
+  OUTPUT_CHANNEL.appendLine('Start discovering Acceptance test cases under: tests/acceptance/**/*.js');
   const acceptanceCtrl = new TestHandler(context, 'tests/acceptance/**/*.js', 'Acceptance').setupRunProfile();
 
   function updateNodeForDocument(e: vscode.TextDocument) {
