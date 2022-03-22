@@ -19,67 +19,47 @@ export const parseMarkdown = (
     moduleExpressions.forEach((module: any) => {
       const moduleName = module.expression.arguments[0];
       const testSuite = module.expression.arguments[1]?.body?.body;
-      for (let lineNo = 0; lineNo < lines.length; lineNo++) {
-        const line = lines[lineNo];
 
-        if (line.includes("module('" + moduleName.value + "'") || line.includes('module("' + moduleName.value + '"')) {
-          const testCases = testSuite?.filter((testCase: any) => testCase.expression?.callee?.name === 'test');
-          events.onHeading(
-            new vscode.Range(new vscode.Position(lineNo, 0), new vscode.Position(lineNo, line.length)),
-            moduleName.value,
-            1
+      events.onHeading(
+        new vscode.Range(
+          new vscode.Position(module.loc.start.line === 0 ? 0 : module.loc.start.line - 1, module.loc.start.column),
+          new vscode.Position(module.loc.end.line, module.loc.end.column)
+        ),
+        moduleName.value,
+        1
+      );
+
+      testSuite.forEach((test: any) => {
+        const testCallee = test?.expression?.callee;
+        if (testCallee?.name === 'test') {
+          const assertions = test.expression.arguments[1].body.body.filter(
+            (body: any) =>
+              body.expression?.callee?.object?.name === 'assert' ||
+              body.expression?.callee?.object?.callee?.object?.name === 'assert'
           );
-          const onTests: any[] = [];
-          testCases?.forEach((testCase: any) => {
-            const assertions = testCase.expression.arguments[1].body.body.filter(
-              (body: any) =>
-                body.expression?.callee?.object?.name === 'assert' ||
-                body.expression?.callee?.object?.callee?.object?.name === 'assert'
+
+          const assertionsRange = assertions.map((res: any) => {
+            const loc = res.expression.callee.object.callee?.object?.loc || res.expression.callee.object.loc;
+            return new vscode.Range(
+              new vscode.Position(loc.start.line - 1, 0),
+              new vscode.Position(loc.start.line - 1, loc.end.column)
             );
-
-            const assertionsRange = assertions.map((res: any) => {
-              const loc = res.expression.callee.object.callee?.object?.loc || res.expression.callee.object.loc;
-              return new vscode.Range(
-                new vscode.Position(loc.start.line - 1, 0),
-                new vscode.Position(loc.start.line - 1, loc.end.column)
-              );
-            });
-
-            const testCaseName = testCase.expression.arguments[0];
-
-            for (let testCaseLineNo = 0; testCaseLineNo < lines.length; testCaseLineNo++) {
-              const testCaseLine = lines[testCaseLineNo];
-              let range;
-              let _moduleName;
-              let _testCaseName;
-              if (
-                testCaseLine.includes("test('" + testCaseName.value + "'") ||
-                testCaseLine.includes('test("' + testCaseName.value + '"')
-              ) {
-                range = new vscode.Range(
-                  new vscode.Position(testCaseLineNo, 0),
-                  new vscode.Position(testCaseLineNo, testCaseLine.length)
-                );
-                _moduleName = moduleName.value;
-                _testCaseName = testCaseName.value;
-              }
-              if (_testCaseName) {
-                onTests.push({
-                  range,
-                  moduleName: _moduleName,
-                  testCaseName: _testCaseName,
-                  assertionsRange,
-                });
-              }
-            }
           });
 
-          onTests.forEach(test => {
-            console.log(test.moduleName, test.testCaseName, test.assertionsRange);
-            events.onTest(test.range, test.moduleName, test.testCaseName, test.assertionsRange);
-          });
+          events.onTest(
+            new vscode.Range(
+              new vscode.Position(
+                testCallee.loc.start.line === 0 ? 0 : testCallee.loc.start.line - 1,
+                testCallee.loc.start.column
+              ),
+              new vscode.Position(testCallee.loc.end.line, testCallee.loc.end.column)
+            ),
+            moduleName.value,
+            test.expression?.arguments[0].value,
+            assertionsRange
+          );
         }
-      }
+      });
     });
   }
 };

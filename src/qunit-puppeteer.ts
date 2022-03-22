@@ -305,3 +305,42 @@ export async function setupPuppeteer(shouldDebug: boolean) {
     executablePath: vscode.workspace.getConfiguration('emberServer').get('puppeteerExecutablePath'),
   });
 }
+
+export async function getQunit(emberTestUrl: string) {
+  OUTPUT_CHANNEL.appendLine('Start Loading the moduleID for QUnit modules.');
+  if (!qUnitBrowserInstance) {
+    qUnitBrowserInstance = await setupPuppeteer(_shouldDebug);
+  }
+  let qUnit;
+  try {
+    const page = await qUnitBrowserInstance.newPage();
+    await page.goto(emberTestUrl);
+
+    qUnit = await page.evaluate(() => {
+      return {
+        //@ts-ignore
+        modules: window['QUnit'].config.modules.map(module => {
+          return {
+            name: module.name,
+            moduleId: module.moduleId,
+            tests: module.tests.map((test: { name: any; testId: any }) => {
+              return {
+                name: test.name,
+                testId: test.testId,
+              };
+            }),
+          };
+        }),
+      };
+    });
+    await page.close();
+  } catch (err) {
+    OUTPUT_CHANNEL.appendLine('Error While launching browser to fetch moduleId: ' + err);
+  }
+  if (qUnit?.modules?.length > 0) {
+    OUTPUT_CHANNEL.appendLine('Successfully Loaded the moduleID for QUnit modules.');
+  } else {
+    OUTPUT_CHANNEL.appendLine('Unable to fetch module ID for QUnit modules. Please reload the vscode');
+  }
+  return qUnit;
+}

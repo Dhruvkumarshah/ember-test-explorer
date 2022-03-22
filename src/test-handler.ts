@@ -1,7 +1,9 @@
 import * as vscode from 'vscode';
 import { OUTPUT_CHANNEL } from './error-output';
 import { TestCase, TEST_DATA, TestFile } from './testTree';
+import { getQunit } from './qunit-puppeteer';
 const puppeteer = require('puppeteer-core');
+const urlExists = require('url-exists');
 
 const gatherTestItems = (collection: vscode.TestItemCollection) => {
   const items: vscode.TestItem[] = [];
@@ -94,21 +96,35 @@ export class TestHandler {
     };
 
     const runTestQueue = async () => {
-      const qUnit: { modules: [{ name: string; moduleId: string }] } = await getQunit();
-      for (const { test, data } of queue) {
-        const moduleId: any = qUnit.modules.find(res => res.name === data.getModule())?.moduleId;
-        run.appendOutput(`Running ${test.id}\r\n`);
-        if (cancellation.isCancellationRequested) {
-          run.skipped(test);
+      const emberTestUrl = `${vscode.workspace.getConfiguration('emberServer').get('host')}:${vscode.workspace
+        .getConfiguration('emberServer')
+        .get('port')}/tests/index.html`;
+      await urlExists(emberTestUrl, async function (_: any, isEmberServerRunning: boolean) {
+        if (isEmberServerRunning) {
+          const qUnit: { modules: [{ name: string; moduleId: string }] } = await getQunit(emberTestUrl);
+          for (const { test, data } of queue) {
+            const moduleId: any = qUnit.modules.find(res => res.name === data.getModule())?.moduleId;
+            run.appendOutput(`Running ${test.id}\r\n`);
+            if (cancellation.isCancellationRequested) {
+              run.skipped(test);
+            } else {
+              run.started(test);
+              await data.run(test, run, moduleId, shouldDebug);
+            }
+
+            run.appendOutput(`Completed ${test.id}\r\n`);
+          }
         } else {
-          run.started(test);
-          await data.run(test, run, moduleId, shouldDebug);
+          vscode.window.showErrorMessage(
+            `Please start the ember server to execute tests or check provided host and port information: ${emberTestUrl}`
+          );
+          OUTPUT_CHANNEL.appendLine(
+            `Please start the ember server to execute tests or check provided host and port information: ${emberTestUrl}\nCheck out Extension Feature contribution settings for customization.`
+          );
+          OUTPUT_CHANNEL.show(false);
         }
-
-        run.appendOutput(`Completed ${test.id}\r\n`);
-      }
-
-      run.end();
+        run.end();
+      });
     };
 
     discoverTests(request.include ?? gatherTestItems(this.ctrl.items)).then(runTestQueue);
@@ -146,44 +162,4 @@ export class TestHandler {
     };
     return this.ctrl;
   }
-}
-
-async function getQunit() {
-  OUTPUT_CHANNEL.appendLine('Start Loading the moduleID for QUnit modules.');
-  const browser = await puppeteer.launch({
-    ignoreHTTPSErrors: true,
-    args: ['--allow-file-access-from-files', '--ignore-certificate-errors', '--allow-sandbox-debugging'],
-    executablePath: vscode.workspace.getConfiguration('emberServer').get('puppeteerExecutablePath'),
-  });
-  let qUnit;
-  try {
-    const page = await browser.newPage();
-    await page.goto(
-      `${vscode.workspace.getConfiguration('emberServer').get('host')}:${vscode.workspace
-        .getConfiguration('emberServer')
-        .get('port')}/tests/index.html`
-    );
-
-    qUnit = await page.evaluate(() => {
-      return {
-        //@ts-ignore
-        modules: window['QUnit'].config.modules.map(module => {
-          return {
-            name: module.name,
-            moduleId: module.moduleId,
-          };
-        }),
-      };
-    });
-  } catch (err) {
-    OUTPUT_CHANNEL.appendLine('Error While launching browser to fetch moduleId: ' + err);
-  } finally {
-    await browser.close();
-  }
-  if (qUnit?.modules?.length > 0) {
-    OUTPUT_CHANNEL.appendLine('Successfully Loaded the moduleID for QUnit modules.');
-  } else {
-    OUTPUT_CHANNEL.appendLine('Unable to fetch module ID for QUnit modules. Please reload the vscode');
-  }
-  return qUnit;
 }

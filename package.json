@@ -3,7 +3,7 @@
   "displayName": "ember-test-explorer",
   "repository": "https://github.com/Dhruvkumarshah/ember-test-explorer.git",
   "description": "Display & Debug Ember test cases",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.61.0"
@@ -65,9 +65,10 @@
     "puppeteer": "^13.1.2"
   },
   "dependencies": {
-    "typescript-estree": "^18.1.0",
+    "puppeteer-core": "^13.1.2",
     "typescript": "^4.4.3",
-    "puppeteer-core": "^13.1.2"
+    "typescript-estree": "^18.1.0",
+    "url-exists": "^1.0.3"
   },
   "publisher": "dhruv"
 }
