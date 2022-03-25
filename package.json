@@ -3,7 +3,7 @@
   "displayName": "ember-test-explorer",
   "repository": "https://github.com/Dhruvkumarshah/ember-test-explorer.git",
   "description": "Display & Debug Ember test cases",
-  "version": "0.0.6",
+  "version": "0.0.8",
   "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.61.0"
@@ -52,23 +52,21 @@
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
+    "@types/glob": "^7.1.4",
     "@types/mocha": "^9.0.0",
-    "eslint": "^7.32.0",
-    "glob": "^7.1.7",
-    "mocha": "^9.1.1",
-    "@vscode/test-electron": "^1.6.2",
-    "@typescript-eslint/eslint-plugin": "^4.31.1",
     "@types/node": "14.x",
     "@types/vscode": "^1.61.0",
+    "@typescript-eslint/eslint-plugin": "^4.31.1",
     "@typescript-eslint/parser": "^4.31.1",
-    "@types/glob": "^7.1.4",
-    "puppeteer": "^13.1.2"
+    "@vscode/test-electron": "^1.6.2",
+    "eslint": "^7.32.0",
+    "glob": "^7.1.7",
+    "mocha": "^9.1.1"
   },
   "dependencies": {
+    "@typescript-eslint/typescript-estree": "^5.16.0",
     "puppeteer-core": "^13.1.2",
-    "typescript": "^4.4.3",
-    "typescript-estree": "^18.1.0",
-    "url-exists": "^1.0.3"
+    "typescript": "^4.4.3"
   },
   "publisher": "dhruv"
 }

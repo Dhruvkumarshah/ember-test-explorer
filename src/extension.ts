@@ -32,7 +32,7 @@ export function activate(context: vscode.ExtensionContext) {
   }
 
   context.subscriptions.push(
-    vscode.workspace.onDidOpenTextDocument(updateNodeForDocument),
-    vscode.workspace.onDidChangeTextDocument(e => updateNodeForDocument(e.document))
+    // vscode.workspace.onDidOpenTextDocument(updateNodeForDocument),
+    vscode.workspace.onDidSaveTextDocument(e => updateNodeForDocument(e))
   );
 }

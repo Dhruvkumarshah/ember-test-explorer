@@ -9,3 +9,4 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 remote-debug-profile/**
+**/*.gif
