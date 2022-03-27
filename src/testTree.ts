@@ -1,8 +1,7 @@
 import * as vscode from 'vscode';
 import { TextDecoder } from 'util';
 import { parseMarkdown } from './parser';
-import { runQunitPuppeteer } from './qunit-puppeteer';
-import { OUTPUT_CHANNEL } from './error-output';
+import { QUNIT_MODULES } from './qunit/util';
 
 const textDecoder = new TextDecoder('utf-8');
 
@@ -11,9 +10,6 @@ export type MarkdownTestData = TestFile | TestHeading | TestCase;
 export const TEST_DATA = new WeakMap<vscode.TestItem, MarkdownTestData>();
 
 let generationCounter = 0;
-
-const host = vscode.workspace.getConfiguration('emberServer').get('host');
-const port = vscode.workspace.getConfiguration('emberServer').get('port');
 
 export const getContentFromFilesystem = async (uri: vscode.Uri) => {
   try {
@@ -58,24 +54,30 @@ export class TestFile {
     parseMarkdown(content, {
       onTest: (range: vscode.Range, modulename: string, name: string, assertionsRange: vscode.Range[]) => {
         const parent = ancestors[ancestors.length - 1];
-        const data = new TestCase(`${name}`, modulename, assertionsRange);
-        const id = `${item.uri}/${modulename}/${name}`;
-        const tcase = controller.createTestItem(id, name, item.uri);
-        TEST_DATA.set(tcase, data);
-        tcase.range = range;
-        parent.children.push(tcase);
+        const module = QUNIT_MODULES.modules.find(mod => mod.name === modulename);
+        const test = module?.tests.find(t => t.name === name);
+        if (module && test) {
+          const data = new TestCase(name, test.testId, modulename, assertionsRange);
+          const tcase = controller.createTestItem(test.testId, name, item.uri);
+          tcase.tags = [new vscode.TestTag('TEST')];
+          TEST_DATA.set(tcase, data);
+          tcase.range = range;
+          parent.children.push(tcase);
+        }
       },
 
       onHeading: (range: vscode.Range, name: string, depth: number) => {
         ascend(depth);
         const parent = ancestors[ancestors.length - 1];
-        const id = `${item.uri}/${name}`;
-
-        const thead = controller.createTestItem(id, name, item.uri);
-        thead.range = range;
-        TEST_DATA.set(thead, new TestHeading(thisGeneration));
-        parent.children.push(thead);
-        ancestors.push({ item: thead, children: [] });
+        const module = QUNIT_MODULES.modules.find(mod => mod.name === name);
+        if (module) {
+          const thead = controller.createTestItem(module.moduleId, name, item.uri);
+          thead.tags = [new vscode.TestTag('MODULE')];
+          thead.range = range;
+          TEST_DATA.set(thead, new TestHeading(thisGeneration));
+          parent.children.push(thead);
+          ancestors.push({ item: thead, children: [] });
+        }
       },
     });
 
@@ -90,74 +92,24 @@ export class TestHeading {
 export class TestCase {
   constructor(
     private readonly name: string,
+    private readonly testId: string,
     private readonly module: string,
     private readonly assertionsRange: vscode.Range[]
   ) {}
 
   getLabel() {
-    return `${this.name}`;
+    return this.name;
   }
 
   getModule() {
-    return `${this.module}`;
+    return this.module;
   }
 
-  async run(item: vscode.TestItem, options: vscode.TestRun, moduleId: string, shouldDebug: boolean): Promise<void> {
-    try {
-      const result = await runQunitPuppeteer(
-        {
-          // Path to qunit tests suite
-          targetUrl: `${host}:${port}/tests/index.html?moduleId=${moduleId}&filter=${encodeURIComponent(
-            item.label
-          )}&devmode`,
-          // (optional, 30000 by default) global timeout for the tests suite
-          timeout: 1000000000,
-          // (optional, false by default) should the browser console be redirected or not
-          redirectConsole: true,
-          // (optional, ['--allow-file-access-from-files'] by default) Chrome command-line arguments
-          puppeteerArgs: [
-            '--allow-file-access-from-files',
-            '--remote-debugging-port=9222',
-            '--remote-debugging-address=0.0.0.0',
-            '--ignore-certificate-errors', 
-            '--allow-sandbox-debugging'
-          ],
-        },
-        shouldDebug
-      );
+  getTestId() {
+    return this.testId;
+  }
 
-      if (result.stats.failed === 0) {
-        options.passed(item);
-      } else {
-        const logs = result.modules[this.getModule()]?.tests.find(
-          (res: { name: string }) => res.name === this.getLabel()
-        )?.log;
-        const messages: vscode.TestMessage[] = [];
-
-        logs.forEach(
-          (log: { result: any; expected: string; actual: string; message: string; source: string }, index: number) => {
-            if (!log.result && item.uri) {
-              if (log.actual) {
-                messages.push({
-                  ...vscode.TestMessage.diff(`Expected ${log.expected}`, log.expected, log.actual),
-                  location: new vscode.Location(item.uri, this.assertionsRange[index]),
-                  message: new vscode.MarkdownString(log.message),
-                });
-              } else {
-                messages.push({
-                  ...new vscode.TestMessage(`Message: ${log.message}\nSource: ${log.source}`),
-                  //@ts-ignore
-                  location: new vscode.Location(item.uri, item.range),
-                });
-              }
-            }
-          }
-        );
-
-        options.failed(item, messages);
-      }
-    } catch (err) {
-      OUTPUT_CHANNEL.appendLine('Error While running the tests!: ' + err);
-    }
+  getAssertionsRange() {
+    return this.assertionsRange;
   }
 }

@@ -1,7 +1,11 @@
 import * as vscode from 'vscode';
 import { OUTPUT_CHANNEL } from './error-output';
 import { TestCase, TEST_DATA, TestFile } from './testTree';
-import { getQunit } from './qunit-puppeteer';
+import { ExtendPuppeteerQUnit } from './qunit-puppeteer-v2';
+import { QUNIT_SUBJECT_OBSERVABLE } from './qunit/listener';
+
+const host = vscode.workspace.getConfiguration('emberServer').get('host');
+const port = vscode.workspace.getConfiguration('emberServer').get('port');
 
 const gatherTestItems = (collection: vscode.TestItemCollection) => {
   const items: vscode.TestItem[] = [];
@@ -94,34 +98,7 @@ export class TestHandler {
     };
 
     const runTestQueue = async () => {
-      const emberTestUrl = `${vscode.workspace.getConfiguration('emberServer').get('host')}:${vscode.workspace
-        .getConfiguration('emberServer')
-        .get('port')}/tests/index.html`;
-
-      const qUnit: any = await getQunit(emberTestUrl);
-      if (!qUnit?.modules?.length) {
-        vscode.window.showErrorMessage(
-          `Please start the ember server to execute tests or check provided host and port information: ${emberTestUrl}`
-        );
-        OUTPUT_CHANNEL.appendLine(
-          `Please start the ember server to execute tests or check provided host and port information: ${emberTestUrl}\nCheck out Extension Feature contribution settings for customization.`
-        );
-        OUTPUT_CHANNEL.show(false);
-      } else {
-        for (const { test, data } of queue) {
-          const moduleId: any = qUnit.modules.find((res: any) => res.name === data.getModule())?.moduleId;
-          run.appendOutput(`Running ${test.id}\r\n`);
-          if (cancellation.isCancellationRequested) {
-            run.skipped(test);
-          } else {
-            run.started(test);
-            await data.run(test, run, moduleId, shouldDebug);
-          }
-
-          run.appendOutput(`Completed ${test.id}\r\n`);
-        }
-      }
-      run.end();
+      await runTestCases(run, queue);
     };
 
     discoverTests(request.include ?? gatherTestItems(this.ctrl.items)).then(runTestQueue);
@@ -161,4 +138,69 @@ export class TestHandler {
     this.ctrl.refreshHandler = cancellation => {};
     return this.ctrl;
   }
+}
+
+async function runTestCases(
+  run: vscode.TestRun,
+  queue: {
+    test: vscode.TestItem;
+    data: TestCase;
+  }[]
+): Promise<void> {
+  const testItem: { [id: string]: { item: vscode.TestItem; data: TestCase } } = {};
+  let query = queue
+    .map(que => {
+      testItem[que.test.id] = {
+        item: que.test,
+        data: que.data,
+      };
+      return `testId=${que.test.id}`;
+    })
+    .join('&');
+
+  const extendPuppeteerQUnit = ExtendPuppeteerQUnit.getInstance(true);
+  let messages: vscode.TestMessage[] = [];
+  let assertCounter = 0;
+  const myPromise = new Promise((resolve, _) => {
+    QUNIT_SUBJECT_OBSERVABLE.subscribe(res => {
+      const details = res.details;
+      const testInstance = testItem[details.testId];
+      if (res.name === 'QUNIT_CALLBACK_TEST_START') {
+        run.started(testInstance.item);
+      }
+      if (res.name === 'QUNIT_CALLBACK_LOG') {
+        if (!details.result && details.actual && testInstance.item.uri) {
+          messages.push({
+            ...vscode.TestMessage.diff(`Actual: ${details.actual}`, details.expected, details.actual),
+            location: new vscode.Location(testInstance.item.uri, testInstance.data.getAssertionsRange()[assertCounter]),
+          });
+        } else if (!details.result && testInstance.item.uri && testInstance.item.range) {
+          messages.push({
+            ...new vscode.TestMessage(`Message: ${details.message}\nSource: ${details.source}`),
+            location: new vscode.Location(testInstance.item.uri, testInstance.item.range),
+          });
+        }
+        assertCounter++;
+      } else if (res.name === 'QUNIT_CALLBACK_TEST_DONE') {
+        if (details.failed > 0) {
+          run.failed(
+            testInstance.item,
+            messages.length
+              ? messages
+              : new vscode.TestMessage(`Message: ${details.message}\nSource: ${details.source}`)
+          );
+        } else {
+          run.passed(testInstance.item);
+        }
+        messages = [];
+        assertCounter = 0;
+      } else if (res.name === 'QUNIT_CALLBACK_DONE') {
+        resolve(1);
+      }
+    });
+  });
+
+  (await extendPuppeteerQUnit.page).goto(`${host}:${port}/tests/index.html?${query}`);
+  await myPromise;
+  run.end();
 }
