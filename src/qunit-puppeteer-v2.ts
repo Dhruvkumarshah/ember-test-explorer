@@ -167,4 +167,27 @@ export class ExtendPuppeteerQUnit {
     await page.close();
     return this.testModules;
   }
+
+  public static async resetInstance(canDebug: boolean): Promise<ExtendPuppeteerQUnit> {
+    if (ExtendPuppeteerQUnit.instance) {
+      (await ExtendPuppeteerQUnit.instance.browser).close();
+    }
+    ExtendPuppeteerQUnit.instance = new ExtendPuppeteerQUnit();
+    ExtendPuppeteerQUnit.instance.browserInstance = puppeteer.launch({
+      defaultViewport: null,
+      ignoreHTTPSErrors: true,
+      args: [
+        '--allow-file-access-from-files',
+        '--remote-debugging-port=9222',
+        '--remote-debugging-address=0.0.0.0',
+        '--ignore-certificate-errors',
+        '--allow-sandbox-debugging',
+      ],
+      headless: !canDebug,
+      executablePath: vscode.workspace.getConfiguration('emberServer').get('puppeteerExecutablePath'),
+      devtools: canDebug,
+    });
+
+    return ExtendPuppeteerQUnit.instance;
+  }
 }
