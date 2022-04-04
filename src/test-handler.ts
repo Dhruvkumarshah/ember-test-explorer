@@ -168,7 +168,15 @@ async function runTestCases(
 
   let extendPuppeteerQUnit = ExtendPuppeteerQUnit.getInstance();
   let page = await ExtendPuppeteerQUnit.getInstance()?.page;
-  if (!(shouldDebug && previouslyShouldDebug && (await extendPuppeteerQUnit.browser).isConnected())) {
+
+  if (
+    !(
+      shouldDebug &&
+      previouslyShouldDebug &&
+      (await extendPuppeteerQUnit.browser).isConnected() &&
+      (await (await extendPuppeteerQUnit.browser).pages()).length
+    )
+  ) {
     extendPuppeteerQUnit = await ExtendPuppeteerQUnit.resetInstance(shouldDebug);
     page = await extendPuppeteerQUnit.configurePuppeteer();
     previouslyShouldDebug = shouldDebug;
@@ -176,43 +184,8 @@ async function runTestCases(
 
   let messages: vscode.TestMessage[] = [];
   let assertCounter = 0;
-  const myPromise = new Promise((resolve, _) => {
-    QUNIT_SUBJECT_OBSERVABLE.subscribe(res => {
-      const details = res.details;
-      const testInstance = testItem[details.testId];
-      if (res.name === 'QUNIT_CALLBACK_TEST_START') {
-        run.started(testInstance.item);
-      }
-      if (res.name === 'QUNIT_CALLBACK_LOG') {
-        if (!details.result && details.actual && testInstance.item.uri) {
-          messages.push({
-            ...vscode.TestMessage.diff(`Actual: ${details.actual}`, details.expected, details.actual),
-            location: new vscode.Location(testInstance.item.uri, testInstance.data.getAssertionsRange()[assertCounter]),
-          });
-        } else if (!details.result && testInstance.item.uri && testInstance.item.range) {
-          messages.push({
-            ...new vscode.TestMessage(`Message: ${details.message}\nSource: ${details.source}`),
-            location: new vscode.Location(testInstance.item.uri, testInstance.item.range),
-          });
-        }
-        assertCounter++;
-      } else if (res.name === 'QUNIT_CALLBACK_TEST_DONE') {
-        if (details.failed > 0) {
-          run.failed(
-            testInstance.item,
-            messages.length
-              ? messages
-              : new vscode.TestMessage(`Message: ${details.message}\nSource: ${details.source}`)
-          );
-        } else {
-          run.passed(testInstance.item);
-        }
-        messages = [];
-        assertCounter = 0;
-      } else if (res.name === 'QUNIT_CALLBACK_DONE') {
-        resolve(1);
-      }
-    });
+  const myPromise = new Promise((resolve: (value: number) => void, _) => {
+    getPromise(run, testItem, messages, assertCounter, 0, resolve);
   });
   page.goto(`${host}:${port}/tests/index.html?devmode&${query}`);
   await myPromise;
@@ -221,4 +194,48 @@ async function runTestCases(
   }
 
   run.end();
+}
+
+function getPromise(
+  run: vscode.TestRun,
+  testItem: { [id: string]: { item: vscode.TestItem; data: TestCase } },
+  messages: vscode.TestMessage[],
+  assertCounter: number,
+  index: number,
+  resolve: (n: number) => void
+) {
+  QUNIT_SUBJECT_OBSERVABLE.subscribe(res => {
+    const details = res.details;
+    const testInstance = testItem[details.testId];
+    if (res.name === `QUNIT_CALLBACK_TEST_START_${index}`) {
+      run.started(testInstance.item);
+    }
+    if (res.name === `QUNIT_CALLBACK_LOG_${index}`) {
+      if (!details.result && details.actual && testInstance.item.uri) {
+        messages.push({
+          ...vscode.TestMessage.diff(`Actual: ${details.actual}`, details.expected, details.actual),
+          location: new vscode.Location(testInstance.item.uri, testInstance.data.getAssertionsRange()[assertCounter]),
+        });
+      } else if (!details.result && testInstance.item.uri && testInstance.item.range) {
+        messages.push({
+          ...new vscode.TestMessage(`Message: ${details.message}\nSource: ${details.source}`),
+          location: new vscode.Location(testInstance.item.uri, testInstance.item.range),
+        });
+      }
+      assertCounter++;
+    } else if (res.name === `QUNIT_CALLBACK_TEST_DONE_${index}`) {
+      if (details.failed > 0) {
+        run.failed(
+          testInstance.item,
+          messages.length ? messages : new vscode.TestMessage(`Message: ${details.message}\nSource: ${details.source}`)
+        );
+      } else {
+        run.passed(testInstance.item);
+      }
+      messages = [];
+      assertCounter = 0;
+    } else if (res.name === `QUNIT_CALLBACK_DONE_${index}`) {
+      resolve(1);
+    }
+  });
 }

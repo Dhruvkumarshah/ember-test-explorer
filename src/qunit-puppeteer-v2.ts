@@ -63,48 +63,48 @@ export class ExtendPuppeteerQUnit {
     return ExtendPuppeteerQUnit.instance;
   }
 
-  async configurePuppeteer() {
+  async configurePuppeteer(index: number = 0) {
     this.pageInstance = (await this.browserInstance).newPage();
     (await this.pageInstance).on('console', msg => OUTPUT_CHANNEL.appendLine(msg.text()));
     await (
       await this.pageInstance
-    ).exposeFunction('QUNIT_CALLBACK_BEGIN', (details: QUnitDetails) => {
+    ).exposeFunction(`QUNIT_CALLBACK_BEGIN_${index}`, (details: QUnitDetails) => {
       QUNIT_SUBJECT.next({
-        name: 'QUNIT_CALLBACK_BEGIN',
+        name: `QUNIT_CALLBACK_BEGIN_${index}`,
         details,
       });
       OUTPUT_CHANNEL.appendLine(`Test amount: ${details.totalTests}`);
     });
     await (
       await this.pageInstance
-    ).exposeFunction('QUNIT_CALLBACK_LOG', (details: QUnitDetails) => {
+    ).exposeFunction(`QUNIT_CALLBACK_LOG_${index}`, (details: QUnitDetails) => {
       QUNIT_SUBJECT.next({
-        name: 'QUNIT_CALLBACK_LOG',
+        name: `QUNIT_CALLBACK_LOG_${index}`,
         details,
       });
       OUTPUT_CHANNEL.appendLine(`Log: ${details.result}, ${details.message}`);
     });
     await (
       await this.pageInstance
-    ).exposeFunction('QUNIT_CALLBACK_MODULE_START', (details: QUnitDetails) =>
+    ).exposeFunction(`QUNIT_CALLBACK_MODULE_START_${index}`, (details: QUnitDetails) =>
       OUTPUT_CHANNEL.appendLine(`Now running: ${details.name}`)
     );
     await (
       await this.pageInstance
-    ).exposeFunction('QUNIT_CALLBACK_MODULE_DONE', (details: QUnitDetails) =>
+    ).exposeFunction(`QUNIT_CALLBACK_MODULE_DONE_${index}`, (details: QUnitDetails) =>
       OUTPUT_CHANNEL.appendLine(`Finished running: ${details.name} Failed/total: ${details.failed}/${details.total}`)
     );
 
     await (
       await this.pageInstance
-    ).exposeFunction('QUNIT_CALLBACK_TEST_START', (details: QUnitDetails) => {
+    ).exposeFunction(`QUNIT_CALLBACK_TEST_START_${index}`, (details: QUnitDetails) => {
       OUTPUT_CHANNEL.appendLine(`Now running: ${details.module} ${details.name}`);
     });
     await (
       await this.pageInstance
-    ).exposeFunction('QUNIT_CALLBACK_TEST_DONE', (details: QUnitDetails) => {
+    ).exposeFunction(`QUNIT_CALLBACK_TEST_DONE_${index}`, (details: QUnitDetails) => {
       QUNIT_SUBJECT.next({
-        name: 'QUNIT_CALLBACK_TEST_DONE',
+        name: `QUNIT_CALLBACK_TEST_DONE_${index}`,
         details: JSON.parse(JSON.stringify(details)),
       });
 
@@ -112,9 +112,9 @@ export class ExtendPuppeteerQUnit {
     });
     await (
       await this.pageInstance
-    ).exposeFunction('QUNIT_CALLBACK_DONE', (details: QUnitDetails) => {
+    ).exposeFunction(`QUNIT_CALLBACK_DONE_${index}`, (details: QUnitDetails) => {
       QUNIT_SUBJECT.next({
-        name: 'QUNIT_CALLBACK_DONE',
+        name: `QUNIT_CALLBACK_DONE_${index}`,
         details: JSON.parse(JSON.stringify(details)),
       });
       QUNIT_SUBJECT.reset();
@@ -126,20 +126,24 @@ export class ExtendPuppeteerQUnit {
     await (await this.pageInstance).setCacheEnabled(true);
     await (
       await this.pageInstance
-    ).evaluateOnNewDocument((evaluateArgs: QUnitCallbackEvents) => {
-      let qUnit: any;
-      Object.defineProperty(window, 'QUnit', {
-        get: () => qUnit,
-        set: qUnitValue => {
-          qUnit = qUnitValue;
+    ).evaluateOnNewDocument(
+      (evaluateArgs: QUnitCallbackEvents, i: number) => {
+        let qUnit: any;
+        Object.defineProperty(window, 'QUnit', {
+          get: () => qUnit,
+          set: qUnitValue => {
+            qUnit = qUnitValue;
 
-          for (const [key, value] of Object.entries(evaluateArgs)) {
-            qUnit[key]((window as any)[value]);
-          }
-        },
-        configurable: true,
-      });
-    }, qUnitCallbackEvents);
+            for (const [key, value] of Object.entries(evaluateArgs)) {
+              qUnit[key]((window as any)[`${value}_${i}`]);
+            }
+          },
+          configurable: true,
+        });
+      },
+      qUnitCallbackEvents,
+      index
+    );
     return this.pageInstance;
   }
 
