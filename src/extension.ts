@@ -13,7 +13,6 @@ export function activate(context: vscode.ExtensionContext) {
     (await extendPuppeteerQUnit.browser).close();
     if (qunitModules.length) {
       clearInterval(interval);
-      (await ExtendPuppeteerQUnit.resetInstance(true)).configurePuppeteer();
       QUNIT_MODULES.modules = [];
       QUNIT_MODULES.modules.push(...qunitModules);
       OUTPUT_CHANNEL.appendLine('Activated the extension.');

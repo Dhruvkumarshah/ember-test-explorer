@@ -41,7 +41,7 @@ export class ExtendPuppeteerQUnit {
     return this.testModules;
   }
 
-  public static getInstance(canDebug: boolean): ExtendPuppeteerQUnit {
+  public static getInstance(canDebug: boolean = false): ExtendPuppeteerQUnit {
     if (!ExtendPuppeteerQUnit.instance) {
       ExtendPuppeteerQUnit.instance = new ExtendPuppeteerQUnit();
       ExtendPuppeteerQUnit.instance.browserInstance = puppeteer.launch({
@@ -185,7 +185,7 @@ export class ExtendPuppeteerQUnit {
       ],
       headless: !canDebug,
       executablePath: vscode.workspace.getConfiguration('emberServer').get('puppeteerExecutablePath'),
-      devtools: canDebug,
+      devtools: false,
     });
 
     return ExtendPuppeteerQUnit.instance;

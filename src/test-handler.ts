@@ -7,6 +7,8 @@ import { QUNIT_SUBJECT_OBSERVABLE } from './qunit/listener';
 const host = vscode.workspace.getConfiguration('emberServer').get('host');
 const port = vscode.workspace.getConfiguration('emberServer').get('port');
 
+let previouslyShouldDebug = false;
+
 const gatherTestItems = (collection: vscode.TestItemCollection) => {
   const items: vscode.TestItem[] = [];
   collection.forEach(item => items.push(item));
@@ -98,8 +100,12 @@ export class TestHandler {
     };
 
     const runTestQueue = async () => {
-      await runTestCases(run, queue);
+      await runTestCases(run, queue, shouldDebug);
     };
+
+    cancellation.onCancellationRequested(async () => {
+      (await ExtendPuppeteerQUnit.getInstance().browser).close();
+    });
 
     discoverTests(request.include ?? gatherTestItems(this.ctrl.items)).then(runTestQueue);
   };
@@ -135,7 +141,8 @@ export class TestHandler {
       }
     };
 
-    this.ctrl.refreshHandler = cancellation => {};
+    this.ctrl.refreshHandler = async cancellation => {};
+
     return this.ctrl;
   }
 }
@@ -145,7 +152,8 @@ async function runTestCases(
   queue: {
     test: vscode.TestItem;
     data: TestCase;
-  }[]
+  }[],
+  shouldDebug: boolean
 ): Promise<void> {
   const testItem: { [id: string]: { item: vscode.TestItem; data: TestCase } } = {};
   let query = queue
@@ -158,7 +166,14 @@ async function runTestCases(
     })
     .join('&');
 
-  const extendPuppeteerQUnit = ExtendPuppeteerQUnit.getInstance(true);
+  let extendPuppeteerQUnit = ExtendPuppeteerQUnit.getInstance();
+  let page = await ExtendPuppeteerQUnit.getInstance()?.page;
+  if (!(shouldDebug && previouslyShouldDebug && (await extendPuppeteerQUnit.browser).isConnected())) {
+    extendPuppeteerQUnit = await ExtendPuppeteerQUnit.resetInstance(shouldDebug);
+    page = await extendPuppeteerQUnit.configurePuppeteer();
+    previouslyShouldDebug = shouldDebug;
+  }
+
   let messages: vscode.TestMessage[] = [];
   let assertCounter = 0;
   const myPromise = new Promise((resolve, _) => {
@@ -199,8 +214,11 @@ async function runTestCases(
       }
     });
   });
-
-  (await extendPuppeteerQUnit.page).goto(`${host}:${port}/tests/index.html?${query}`);
+  page.goto(`${host}:${port}/tests/index.html?devmode&${query}`);
   await myPromise;
+  if (!shouldDebug) {
+    (await extendPuppeteerQUnit.browser).close();
+  }
+
   run.end();
 }
